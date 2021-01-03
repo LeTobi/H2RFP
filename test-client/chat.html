@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>chatbeispiel</title>
+    <script src="../src/h2rfp.js"></script>
+    <script>
+        var socket = new H2RFP_Socket("localhost",15432);
+        var logged_in = false;
+
+        function receive(msg, id)
+        {
+            var date = new Date(Number(msg.time)*1000);
+            println("[" + date.toLocaleTimeString() + "] " + msg.sender);
+            println("--"+msg.text);
+        }
+
+        async function takeinput() {
+            var inputbar = document.getElementById("input");
+            var val = inputbar.value;
+            inputbar.value="";
+            if (val=="exit")
+            {
+                await socket.close();
+                println("Du hast den Server verlassen");
+            }
+            if (logged_in)
+            {
+                socket.notify("message",{text:val});
+            }
+            else
+            {
+                println("anmelden als "+val);
+                msg = await socket.exec("login",{name:val});
+                if (msg.result == "true")
+                {
+                    println("Anmeldung erfolgreich");
+                    logged_in = true;
+                }
+                else
+                {
+                    println("fehler: " + msg.info);
+                    println("Name angeben!");
+                }
+            }
+        }
+
+        async function main() {
+            socket.onDisconnect = ()=>{
+                println("Verbindung verloren");
+            };
+            socket.listen("message",receive);
+            println("verbinden...");
+            try {
+                await socket.open();
+            }
+            catch (e) {
+                println("verbindung fehlgeschlagen");
+                return;
+            }
+            println("Name angeben!");
+        }
+
+        function println(txt)
+        {
+            var output = document.getElementById("output");
+            output.innerText = output.innerText + txt + "\n";
+        }
+    </script>
+</head>
+<body onload="main()">
+    <div id="output">
+
+    </div>
+    <input id="input" onkeydown="if (event.keyCode==13) takeinput()"></input>
+</body>
+</html>

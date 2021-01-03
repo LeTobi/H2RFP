@@ -15,13 +15,18 @@ Die Anwendung von H2RFP wird anhand eines Browser-Chat-Programms mit JavaScript 
 ### Initialisierung
 Eine H2RFP-Objekt wird erstellt und verbindet mit Server. Der Verbindungsaufbau verwerndet ```Promise```
 ```JavaScript
-function main() {
-    server = new H2RFP();
-    server.connect("myserver.com",4242).then(()=>{
-        login();
-    }).catch(()=>{
-        console.log("Verbindung kann nicht aufgebaut werden");
-    });
+
+var socket = new H2RFP_Socket("localhost",15432);
+
+async function main() {
+    ...
+    try {
+        await socket.open();
+    }
+    catch (e) {
+        println("verbindung fehlgeschlagen");
+        return;
+    }
     ...
 }
 ```
@@ -31,40 +36,50 @@ Die Kommunikation geschieht auf 3 verschiedene Arten:
 
 **listen:** Stellt einen Einstiegspunkt im Client-Programm dar. Ein Prozess wird auf Initiative des Servers gestartet.
 ```JavaScript
-function main() {
+
+// msg: JSON daten vom server
+// id: referenz vom server
+function receive(msg, id)
+{
     ...
-    // Sobald jemand dem Chat beitritt, addMember aufrufen.
-    server.listen("newMember",addMember);
+}
+
+async function main() {
+    ...
+    server.listen("message",receive);
     ...
 }
 ```
 
 **notify:** Startet einen Prozess beim Server, ohne Einfluss auf Programmfluss im Client
 ```JavaScript
-function setAFK() {
-    // Server wird über AFK informiert.
-    server.notify("status",{status:"afk"});
+async function takeinput() {
+    ...
+    server.notify("message",{text:"hallo ihr"});
+    ...
 }
 ```
 
 **exec**: Ein Teil des Programmflusses wird auf dem Server ausgeführt. Das Prinzip von ```Promise``` wird verwendet, um einzelne Funktionen auf dem Server auszuführen.
 ```JavaScript
-function login(credentials) {
-    server.exec("login",credentials).then((obj)=>{
-        if (obj.success)
-            console.log("ich bin drinn");
-        else
-            console.log("zugriff verweigert");
-    }).catch(()=>{
-        console.log("Die Aktion konnte nicht abgeschlossen werden.")
-    });
+async function takeinput()
+{
+    ...
+    msg = await socket.exec("login",{name:val});
+    ...
 }
 ```
 ### Beenden
 Eine Verbindung kann ohne Promise beendet werden.
 ```JavaScript
-function logout(){
-    server.close();
+function takeinput(){
+    ...
+    if (val=="exit")
+    {
+        await socket.close();
+        println("Du hast den Server verlassen");
+    }
+    ...
 }
 ```
 
@@ -73,18 +88,16 @@ Damit ein Verbindungsverlust erkannt werden kann, gibt es lokale Ereignisse.
 
 ```onDisconnect```: Dieses Ereigniss wird bei einem Verbindungsverlust ausgelöst.
 
-```onReconnect```: Dieses Ereigniss wird beim erneuten Verbinden ausgelöst.
+```onConnect```: Dieses Ereigniss wird beim erneuten Verbinden ausgelöst.
 
 ```JavaScript
 function main()
 {
-    server.onDisconnect = function {
-        console.log("Verbindung unterbrochen");
+    ...
+    socket.onDisconnect = ()=>{
+        println("Verbindung verloren");
     };
-    
-    server.onReconnect = function {
-        console.log("Verbindung wieder hergestellt");
-    }
+    ...
 }
 ```
 

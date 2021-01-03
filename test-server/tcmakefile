@@ -1,0 +1,6 @@
+selection test-server
+    exe test-server ./test-server.cpp
+        link pthread
+        link boost_system
+        link boost_thread
+        link tc
