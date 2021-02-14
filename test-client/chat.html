@@ -7,11 +7,17 @@
         var socket = new H2RFP_Socket("localhost",15432);
         var logged_in = false;
 
-        function receive(msg, id)
+        function receive(data)
         {
-            var date = new Date(Number(msg.time)*1000);
-            println("[" + date.toLocaleTimeString() + "] " + msg.sender);
-            println("--"+msg.text);
+            var date = new Date(Number(data.time)*1000);
+            println("[" + date.toLocaleTimeString() + "] " + data.sender);
+            println("--"+data.text);
+        }
+
+        function pong(data, respond)
+        {
+            console.log("ping");
+            respond();
         }
 
         async function takeinput() {
@@ -49,6 +55,7 @@
                 println("Verbindung verloren");
             };
             socket.listen("message",receive);
+            socket.listen("ping",pong);
             println("verbinden...");
             try {
                 await socket.open();

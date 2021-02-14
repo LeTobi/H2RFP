@@ -34,19 +34,28 @@ async function main() {
 ### Kommunikation
 Die Kommunikation geschieht auf 3 verschiedene Arten:
 
-**listen:** Stellt einen Einstiegspunkt im Client-Programm dar. Ein Prozess wird auf Initiative des Servers gestartet.
+**listen:** Stellt einen Einstiegspunkt im Client-Programm dar. Ein Prozess wird auf Initiative des Servers gestartet. Optional kann auch auf die Anfrage geantwortet werden, wenn der Server dies erwartet.
+
 ```JavaScript
 
-// msg: JSON daten vom server
-// id: referenz vom server
-function receive(msg, id)
+// data: JSON daten vom server
+function receive(data)
 {
     ...
+}
+
+// data: JSON daten vom server
+// respond: Antwortet dem server
+function pong(data, respond)
+{
+    ...
+    respond( /* [daten] */);
 }
 
 async function main() {
     ...
     server.listen("message",receive);
+    server.listen("ping",pong)
     ...
 }
 ```

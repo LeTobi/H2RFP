@@ -121,6 +121,9 @@ class H2RFP_Parser
         output += message.id;
         output += ";";
         
+        if (message.data==undefined)
+            message.data = { };
+        
         var datastr = JSON.stringify(message.data);
         output += datastr.length;
         output += ";";
@@ -191,11 +194,12 @@ class H2RFP_Socket
         }
         else
         {
+            var response_cb = this.private_respond.bind(this,msg.id);
             for (var i=0;i<this.listeners.length;i++)
             {
                 if (this.listeners[i][0] == msg.name)
                 {
-                    this.listeners[i][1].call(null,msg.data,msg.id);
+                    this.listeners[i][1].call(null,msg.data,response_cb);
                     return;
                 }
             }
@@ -338,6 +342,20 @@ class H2RFP_Socket
         // parallel to onclose
     }
 
+    private_write_serial(data)
+    {
+        if (this.state == H2RFP_SocketState_OPEN)
+            this.socket.send(data);
+        else
+            this.writebuffer += data;
+    }
+
+    private_respond(evid, evData)
+    {
+        var serial = H2RFP_Parser.stringify({name:"",id:evid,data:evData});
+        this.private_write_serial(serial);
+    }
+
     open()
     {
         this.target = H2RFP_SocketState_OPEN;
@@ -365,22 +383,14 @@ class H2RFP_Socket
 
     notify(evName, evData)
     {
-        if (evData==undefined)
-            throw "evData undefined";
         var serial = H2RFP_Parser.stringify({name:evName,id:0,data:evData});
-        if (this.state == H2RFP_SocketState_OPEN)
-            this.socket.send(serial);
-        else
-            this.writebuffer += serial;
+        this.private_write_serial(serial);
     }
 
     exec(evName, evData)
     {
         var serial = H2RFP_Parser.stringify({name:evName,id:this.parser_nexti,data:evData});
-        if (this.state == H2RFP_SocketState_OPEN)
-            this.socket.send(serial);
-        else
-            this.writebuffer += serial;
+        this.private_write_serial(serial);
         var out = new Promise(((res,rej)=>{
             this.requestPromises.push([this.parser_nexti,{resolve:res,reject:rej}]);
         }).bind(this));

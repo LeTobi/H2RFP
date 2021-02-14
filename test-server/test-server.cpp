@@ -13,16 +13,30 @@ class Client
 {
 public:
     WS_Endpoint* endpoint;
-    std::string name;
+    bool logged_in = false;
+    std::string name = "not logged-in";
+    Response pong;
 
     Client(): endpoint(new WS_Endpoint(acceptor))
     {
+        endpoint->options.inactive_warning = 10;
+        endpoint->options.read_timeout = 15;
         endpoint->connect();
+    }
+
+    void tick()
+    {
+        if (pong.update(endpoint->responses))
+        {
+            std::cout << name << ": pong received" << std::endl;
+            pong.dismiss();
+        }
     }
 
     void reset()
     {
-        name = "";
+        name = "not logged-in";
+        logged_in = false;
     }
 };
 
@@ -42,53 +56,56 @@ void on_client_close(Client* c)
 
 void on_client_login(Client* client, const Message& msg)
 {
-    Message out;
-    out.id = msg.id;
+    JSObject out;
 
     if (msg.data.get("name","").size() > 20)
     {
-        out.data.put("info","maximal 20 zeichen");
-        out.data.put("result",false);
+        out.put("info","maximal 20 zeichen");
+        out.put("result",false);
     }
-    else if (client->name.empty())
+    else if (!client->logged_in)
     {
         client->name = msg.data.get("name","");
         if (client->name.empty())
         {
-            out.data.put("info","no name found");
-            out.data.put("result",false);
+            out.put("info","no name found");
+            out.put("result",false);
         }
         else
         {
-            out.data.put("info","name accepted");
-            out.data.put("result",true);
+            out.put("info","name accepted");
+            out.put("result",true);
+            client->logged_in = true;
         }
     }
     else
     {
-        out.data.put("info","you already have a name");
-        out.data.put("result",true);
+        out.put("info","you already have a name");
+        out.put("result",true);
     }
-    client->endpoint->send(out);
+    client->endpoint->respond(msg.id, out);
 }
 
-void on_client_message(Client* client,const Message& msg)
+void on_client_message(Client* client, const Message& msg)
 {
-    if (client->name.empty())
+    if (!client->logged_in)
+    {
+        std::cout << "Nachricht abgelehnt" << std::endl;
         return;
+    }
     std::string text = msg.data.get("text","");
+    std::cout << client->name << ": " << text << std::endl;
     if (text.empty())
         return;
-    Message packet;
-    packet.name = "message";
-    packet.data.put("text",text);
-    packet.data.put("time",time(nullptr));
-    packet.data.put("sender",client->name);
+    JSObject packet;
+    packet.put("text",text);
+    packet.put("time",time(nullptr));
+    packet.put("sender",client->name);
     for (Client& other: clients)
     {
         if (!other.endpoint->is_connected())
             continue;
-        other.endpoint->send(packet);
+        other.endpoint->notify("message", packet);
     }
 }
 
@@ -107,7 +124,7 @@ int main()
                 on_client_connect(&client);
             if (ev.type == EventType::closed)
                 on_client_close(&client);
-            if (ev.type == EventType::request)
+            if (ev.type == EventType::message)
             {
                 if (ev.msg.name == "login")
                     on_client_login(&client,ev.msg);
@@ -116,6 +133,13 @@ int main()
                 else
                     std::cout << "unbekannte anfrage: " << ev.msg.name << std::endl;
             }
+            if (ev.type == EventType::inactive)
+            {
+                std::cout << client.name << ": inactive" << std::endl;
+                if (!client.pong.is_requested())
+                    client.pong = client.endpoint->request("ping");
+            }
         }
+        client.tick();
     }
 }
