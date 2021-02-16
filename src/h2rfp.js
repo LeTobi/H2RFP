@@ -233,7 +233,7 @@ class H2RFP_Socket
             }
             if (this.state==H2RFP_SocketState_CLOSED && this.parser.state != H2RFP_ParserState_ERROR)
             {
-                this.socket = new WebSocket("ws://" + this.address + ":" + this.port);
+                this.socket = new WebSocket(this.address + ":" + this.port);
                 this.socket.onopen = this.private_onopen.bind(this);
                 this.socket.onmessage = this.private_onmessage.bind(this);
                 this.socket.onclose = this.private_onclose.bind(this);
