@@ -125,12 +125,14 @@ class H2RFP_Parser
             message.data = { };
         
         var datastr = JSON.stringify(message.data);
-        output += datastr.length;
+        output += H2RFP_Parser.encoder.encode(datastr).length;
         output += ";";
         output += datastr;
         return output;
     }
 }
+
+H2RFP_Parser.encoder = new TextEncoder();
 
 H2RFP_ParserState_ERROR = 0;
 H2RFP_ParserState_START = 1;
