@@ -282,9 +282,11 @@ class H2RFP_Socket
             {
                 if (this.openPromise!=undefined)
                     this.openPromise.reject("connection failed");
-                this.openPromise = undefined;
-                if (this.closePromise!=undefined)
+                else if (this.closePromise!=undefined)
                     this.closePromise.resolve();
+                else
+                    this.onDisconnect.call();
+                this.openPromise = undefined;
                 this.closePromise = undefined;
                 this.requestPromises.forEach((e,i,a)=>{e[1].reject("connection failed")});
                 this.requestPromises = [];
@@ -334,7 +336,6 @@ class H2RFP_Socket
         this.target = H2RFP_SocketState_CLOSED; // do not retry
         this.state = H2RFP_SocketState_CLOSED;
         this.private_react();
-        this.onDisconnect.call();
     }
 
     private_onerror()
