@@ -7,10 +7,11 @@ class H2RFP_Parser
         this.state = H2RFP_ParserState_START;
         this.current = {name:"",id:0,data:{}};
         this.datalen = 0;
-        this.buffer = "";
+        this.buffer = [];
     }
 
     feed(streamdata) {
+        streamdata = H2RFP_Parser.utf8enc.encode(streamdata);
         for (var i=0;i<streamdata.length;i++)
         switch(this.state)
         {
@@ -18,52 +19,59 @@ class H2RFP_Parser
             return;
 
         case H2RFP_ParserState_START:
-            if (streamdata[i] != "!")
+            if (streamdata[i] != 33) // '!'
             {
                 console.log("Es wird '!' am Anfang einer Anfrage erwartet.");
                 this.state = H2RFP_ParserState_ERROR;
                 return;
             }
+            this.buffer = [];
             this.state = H2RFP_ParserState_NAME
             break;
 
         case H2RFP_ParserState_NAME:
-            if (streamdata[i] == ";")
+            if (streamdata[i] == 59) // ';'
+            {
+                this.current.name = H2RFP_Parser.utf8dec.decode(Uint8Array.from(this.buffer));
+                this.buffer = [];
                 this.state = H2RFP_ParserState_ID;
+            }
             else
-                this.current.name += streamdata[i];
+            {
+                this.buffer.push_back(streamdata[i]);
+            }
             break;
 
         case H2RFP_ParserState_ID:
-            if (streamdata[i] == ";")
+            if (streamdata[i] == 59) // ';'
             {
-                this.current.id = Number(this.buffer);
+                this.current.id = Number(H2RFP_Parser.utf8dec.decode(Uint8Array.from(this.buffer)));
                 if (this.current.id==NaN || this.current.id<0)
                 {
                     console.log("Es wird eine positive ID erwartet");
                     this.state = H2RFP_ParserState_ERROR;
                     return;
                 }
-                this.buffer = "";
+                this.buffer = [];
                 this.state = H2RFP_ParserState_SIZE;
             }
             else
             {
-                this.buffer += streamdata[i];
+                this.buffer.push(streamdata[i]);
             }
             break;
 
         case H2RFP_ParserState_SIZE:
-            if (streamdata[i] == ";")
+            if (streamdata[i] == 59) // ';'
             {
-                this.datalen = Number(this.buffer);
+                this.datalen = Number(H2RFP_Parser.utf8dec.decode(Uint8Array.from(this.buffer)));
                 if (this.datalen==NaN || this.datalen<0)
                 {
                     console.log("Es wurde eine Datenlänge erwartet");
                     this.state = H2RFP_ParserState_ERROR;
                     return;
                 }
-                this.buffer="";
+                this.buffer=[];
                 this.state = H2RFP_ParserState_DATA;
 
                 if (this.datalen == 0)
@@ -75,22 +83,22 @@ class H2RFP_Parser
             }
             else
             {
-                this.buffer += streamdata[i];
+                this.buffer.push(streamdata[i]);
             }
             break;
 
         case H2RFP_ParserState_DATA:
-            this.buffer += streamdata[i];
+            this.buffer.push(streamdata[i]);
             if (this.buffer.length == this.datalen)
             {
                 try {
-                    this.current.data = JSON.parse(this.buffer);
+                    this.current.data = JSON.parse(H2RFP_Parser.utf8dec.decode(Uint8Array.from(this.buffer)));
                 } catch (e) {
                     console.log(e);
                     this.state = H2RFP_ParserState_ERROR;
                     return;
                 }
-                this.buffer = "";
+                this.buffer = [];
                 this.output.push(this.current);
                 this.current = {name:"",id:0,data:{}};
                 this.state = H2RFP_ParserState_START;
@@ -125,14 +133,15 @@ class H2RFP_Parser
             message.data = { };
         
         var datastr = JSON.stringify(message.data);
-        output += H2RFP_Parser.encoder.encode(datastr).length;
+        output += H2RFP_Parser.utf8enc.encode(datastr).length;
         output += ";";
         output += datastr;
         return output;
     }
 }
 
-H2RFP_Parser.encoder = new TextEncoder();
+H2RFP_Parser.utf8enc = new TextEncoder();
+H2RFP_Parser.utf8dec = new TextDecoder();
 
 H2RFP_ParserState_ERROR = 0;
 H2RFP_ParserState_START = 1;
