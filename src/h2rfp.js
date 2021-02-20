@@ -38,7 +38,7 @@ class H2RFP_Parser
             }
             else
             {
-                this.buffer.push_back(streamdata[i]);
+                this.buffer.push(streamdata[i]);
             }
             break;
 
