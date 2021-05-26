@@ -16,7 +16,7 @@ Die Anwendung von H2RFP wird anhand eines Browser-Chat-Programms mit JavaScript 
 Eine H2RFP-Objekt wird erstellt und verbindet mit Server. Der Verbindungsaufbau verwerndet ```Promise```
 ```JavaScript
 
-var socket = new H2RFP_Socket("localhost",15432);
+var socket = new H2RFP_Socket("ws://localhost",15432);
 
 async function main() {
     ...
